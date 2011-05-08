@@ -51,7 +51,7 @@ abstract class Application {
 		self::$application = $app;
 		
 		$dispatcher = new Dispatcher();
-		$output = $dispatcher->dispatch($app, $request);
+		$output = $dispatcher->dispatch($app, $app->request);
 		print $output;
 	}
 	
