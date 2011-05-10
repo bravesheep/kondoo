@@ -1,7 +1,14 @@
 <?php
 
 namespace Kondoo;
+
+use Kondoo\Filter\IFilter;
+
 abstract class Application {
+	
+	const EVENT_FIRST = 1;
+	const EVENT_LAST  = 2;
+	
 	/**
 	 * Implementations can overwrite the setup function for basic setup of their application. 
 	 */
@@ -32,26 +39,19 @@ abstract class Application {
 	public static function run() {
 		$script = $_SERVER['SCRIPT_FILENAME'];
 		Config::set('app.location', dirname(dirname($script)) . DIRECTORY_SEPARATOR .
-					'application');
-		Config::set('app.public', dirname($script));
+					'application' . DIRECTORY_SEPARATOR);
+		Config::set('app.public', dirname($script) . DIRECTORY_SEPARATOR);
 		
-		Config::set('app.controllers', './controllers');
-		Config::set('app.templates', './templates');
+		Config::set('app.controllers', './controllers/');
+		Config::set('app.templates', './templates/');
 		
 		$app = new static();
-		$app->router = new Router();
-		
-		$app->setup();
-		list($url) = explode('?', $_SERVER['REQUEST_URI']);
-		$routed = $app->router->route($url);
-		
-		$app->request = new Request($app);
-		$app->request->controllerName = lcfirst($routed['controller']);
-		$app->request->actionName = $routed['action'];
 		self::$application = $app;
 		
-		$dispatcher = new Dispatcher();
-		$output = $dispatcher->dispatch($app, $app->request);
+		$app->router = new Router();
+		$app->setup();
+		$app->request = new Request($app);
+		$output = Dispatcher::dispatch($app, $app->request);
 		print $output;
 	}
 	
@@ -71,5 +71,65 @@ abstract class Application {
 	protected function setRoutes(array $routes)
 	{
 		$this->router->addRoutes($routes);
+	}
+	
+	private $listeners = array();
+	
+	/**
+	 * Adds a listener to the given event identifier. A listerner can be 
+	 * any callable or an implementation of the IFilter interface.
+	 * @see Kondoo\Filter\IFilter
+	 * @param mixed $event
+	 * @param mixed $filter
+	 * @return boolean
+	 */
+	public function bind($event, $filter = null) 
+	{
+		if($event instanceof IEventFilter) {
+			$filter = $event;
+			$event = $filter->getEvents();
+		}
+		
+		if(is_callable($filter) || $filter instanceof IFilter) {
+			if(is_array($event)) {
+				foreach($event as $loc) {
+					if(!isset($this->listeners[$loc])) {
+						$this->listeners[$loc] = array();
+					}
+					$this->listeners[$loc][] = $filter;
+				}
+			} else {
+				if(!isset($this->listeners[$event])) {
+					$this->listeners[$event] = array();
+				}
+				$this->listeners[$event][] = $filter;
+			}
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Triggers all listeners that are waiting for events on the given location.
+	 * @param string $event The event to trigger
+	 * @param mixed $data Extra data to be submitted to the listeners
+	 * @return boolean
+	 */
+	public function trigger($event, &$data = null)
+	{
+		$listeners = isset($this->listeners[$event]) ? $this->listeners[$event] : array();
+		$result = true;
+		foreach($listeners as $listener) {
+			if(is_callable($listener)) {
+				if(call_user_func_array($listener, array(&$data)) === false) {
+					$result = false;
+				}
+			} else if($listener instanceof IFilter) {
+				if($listener->call($this, $data) === false) {
+					$result = false;
+				}
+			}
+		}
+		return $result;
 	}
 }
