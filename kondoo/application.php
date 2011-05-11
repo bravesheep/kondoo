@@ -3,11 +3,12 @@
 namespace Kondoo;
 
 use Kondoo\Filter\IFilter;
+use \Exception;
 
 abstract class Application {
 	
-	const EVENT_FIRST = 1;
-	const EVENT_LAST  = 2;
+	const EVENT_FIRST   = 1;
+	const EVENT_LAST    = 2;
 	
 	/**
 	 * Implementations can overwrite the setup function for basic setup of their application. 
@@ -25,6 +26,8 @@ abstract class Application {
 	 * @var Kondoo\Request
 	 */
 	public $request;
+	
+	private $redirected = false;
 	
 	/**
 	 * Contains the latest instance of the application after the run function has dispatched
@@ -44,6 +47,7 @@ abstract class Application {
 		
 		Config::set('app.controllers', './controllers/');
 		Config::set('app.templates', './templates/');
+		Config::set('output.late', true);
 		
 		$app = new static();
 		self::$application = $app;
@@ -51,8 +55,23 @@ abstract class Application {
 		$app->router = new Router();
 		$app->setup();
 		$app->request = new Request($app);
-		$output = Dispatcher::dispatch($app, $app->request);
-		print $output;
+		
+		$maxRedirects = (int) Config::get('app.max_redirects', 5);
+		Config::set('app.redirect', 0);
+		do {
+			Output::reset();
+			$app->redirected = false;
+			Dispatcher::dispatch($app, $app->request);
+			if($app->redirected) {
+				Config::increment('app.redirect');
+			}
+		} while($app->redirected && Config::get('app.redirect') < $maxRedirects);
+		
+		if($app->redirected && Config::get('app.redirect') >= $maxRedirects) {
+			$redir = Config::get('app.redirect');
+			throw new Exception("Reached $redir redirections, which is the maximum");
+		}
+		Output::output();
 	}
 	
 	/**
@@ -131,5 +150,29 @@ abstract class Application {
 			}
 		}
 		return $result;
+	}
+	
+	public function redirect($controller, $action = null, $params = null)
+	{
+		$callController = $this->request->getController();
+		$callAction = $this->request->getAction();
+		$callParams = $this->request->params();
+		if(is_string($controller) && is_string($action)) {
+			$callController = $controller;
+			$callAction = $action;
+			if(is_array($params)) {
+				$callParams = $params;
+			}
+		} else if(is_string($controller)) {
+			$callAction = $controller;
+			if(is_array($action)) {
+				$callParams = $action;
+			}
+		}
+		
+		$this->request->setController($callController);
+		$this->request->setAction($callAction);
+		$this->request->setParams($callParams);
+		$this->redirected = true;
 	}
 }

@@ -172,4 +172,31 @@ class Request {
 	{
 		return strtolower($this->actionName);
 	}
+	
+	/**
+	 * Set the controller name to the given controller.
+	 * @param string $controller
+	 */
+	public function setController($controller)
+	{
+		$this->controllerName = $controller;
+	}
+	
+	/**
+	 * Set the action name to the given action
+	 * @param string $action
+	 */
+	public function setAction($action)
+	{
+		$this->actionName = $action;
+	}
+	
+	/**
+	 * Change the parameters to be used when calling actions to the given array of params
+	 * @param array $params
+	 */
+	public function setParams(array $params)
+	{
+		$this->parameters = $params;
+	}
 }

@@ -4,6 +4,7 @@ namespace Kondoo\Controller;
 
 use Kondoo\Request;
 use Kondoo\Application;
+use Kondoo\Output;
 
 class Controller implements IController {
 	
@@ -21,12 +22,12 @@ class Controller implements IController {
 	
 	public function __beforeAction()
 	{
-		
+		// default implementation does nothing
 	}
 	
-	public function __afterAction($output)
+	public function __afterAction()
 	{
-		return $output;
+		// default implementation does nothing
 	}
 	
 	public function setRequest(Request $request)
@@ -37,5 +38,15 @@ class Controller implements IController {
 	public function setApplication(Application $app)
 	{
 		$this->app = $app;
+	}
+	
+	public function __get($variable)
+	{
+		return Output::get($variable);
+	}
+	
+	public function __set($variable, $value)
+	{
+		Output::set($variable, $value);
 	}
 }

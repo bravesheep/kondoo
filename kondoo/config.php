@@ -42,7 +42,7 @@ class Config {
 	 */
 	public static function loadIni($filename)
 	{
-		$fileContent = parse_ini_file($filename, true);
+		$fileContent = parse_ini_file($filename, true, INI_SCANNER_NORMAL);
 		foreach($fileContent as $section => $sectionContent) {
 			foreach($sectionContent as $key => $value) {
 				self::set($section . self::CONFIG_SEPARATOR . $key, $value);
@@ -77,6 +77,37 @@ class Config {
 			return static::$values[$id];
 		}
 		return $default;
+	}
+	
+	/**
+	 * Increment the value of the given identifier with the amount given, only if the value is an
+	 * integer. Returns the new value, even if the new value is unchanged because the value wasn't
+	 * an integer.
+	 * @param string $id
+	 * @param int $amount
+	 * @return mixed
+	 */
+	public static function increment($id, $amount = 1)
+	{
+		$var = self::get($id, 0);
+		if(is_int($var)) {
+			self::set($id, $var + $amount);
+			return $var + $amount;	
+		}
+		return $var;			
+	}
+	
+	/**
+	 * Decrement the value of the given identifier with the amount given, only if the value is an
+	 * integer. Returns the new value, even if the new value is unchanged because the value wasn't
+	 * an integer.
+	 * @param string $id
+	 * @param int $amount
+	 * @return mixed
+	 */
+	public static function decrement($id, $amount = 1)
+	{
+		return self::increment($id, -$amount);
 	}
 	
 	/**

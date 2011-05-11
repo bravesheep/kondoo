@@ -2,6 +2,11 @@
 
 namespace Kondoo;
 
+use \Exception;
+use \ReflectionClass;
+use \ReflectionMethod;
+use Kondoo\Controller\IController;
+
 class Dispatcher {
 	const CONTROLLER_POSTFIX = 'Controller';
 	
@@ -25,32 +30,35 @@ class Dispatcher {
 		
 		if(file_exists($file) && is_readable($file)) {
 			require_once $file;
-			$reflector = new \ReflectionClass($controller);
+			$reflector = new ReflectionClass($controller);
 			if($reflector->implementsInterface('Kondoo\\Controller\\IController')) {
 				$object = new $controller();
 				$object->setRequest($request);
 				$object->setApplication($app);
-				$app->trigger('before_action');
-				$object->__beforeAction();
-				
-				
 				$method = $reflector->getMethod($request->getAction());
-				if($method->isPublic()) {
-					$params = $request->params();
-					
-					$app->trigger('call_action');
-					$output = $method->invokeArgs($object, self::matchParams($method, $params));
-					
-					$app->trigger('after_action', $output);
-					return $object->__afterAction($output);
-				} else {
-					throw new \Exception("Method found, but is private");
-				}
+				self::dispatchAction($method, $object, $request->params());
 			} else {
-				throw new \Exception("Controller found, but doesn't implement IController");
+				throw new Exception("Controller found, but doesn't implement IController");
 			}
 		} else {
-			throw new \Exception("Controller not found");
+			throw new Exception("Controller not found");
+		}
+	}
+	
+	private static function dispatchAction(ReflectionMethod $method, IController $controller, 
+			array $params)
+	{
+		if($method->isPublic()) {	
+			Application::get()->trigger('before_action');
+			$controller->__beforeAction();
+			
+			Application::get()->trigger('call_action');
+			$method->invokeArgs($controller, self::matchParams($method, $params));
+			
+			$controller->__afterAction();
+			Application::get()->trigger('after_action', $controller);
+		} else {
+			throw new Exception("Method for action found, but is not public.");
 		}
 	}
 	
@@ -61,7 +69,7 @@ class Dispatcher {
 	 * @param array $params
 	 * @throws \Exception
 	 */
-	public static function matchParams(\ReflectionMethod $method, array $params)
+	public static function matchParams(ReflectionMethod $method, array $params)
 	{
 		$values = array();
 		foreach($method->getParameters() as $param) {
@@ -70,7 +78,7 @@ class Dispatcher {
 			} else if($param->isDefaultValueAvailable()) {
 				$values[] = $param->getDefaultValue();
 			} else {
-				throw new \Exception("Not enough parameters to call action");
+				throw new Exception("Not enough parameters to call action");
 			}
 		}
 		return $values;

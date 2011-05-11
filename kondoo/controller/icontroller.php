@@ -33,5 +33,5 @@ interface IController {
 	 * @param mixed $output
 	 * @return The output
 	 */
-	public function __afterAction($output);
+	public function __afterAction();
 }
