@@ -28,7 +28,7 @@ class Output {
 	 * @param unknown_type $content
 	 * @throws Exception
 	 */
-	public static function h($header, $content = null)
+	public static function header($header, $content = null)
 	{
 		if(!headers_sent()) {
 			if(!is_null($content)) {
@@ -50,7 +50,7 @@ class Output {
 	 * is called. The p function can be used as if it was sprintf.
 	 * @param string $var
 	 */
-	public static function p($var)
+	public static function put($var)
 	{
 		$argCount = func_num_args();
 		if($argCount > 1) {
@@ -72,7 +72,7 @@ class Output {
 	 * given to the print function.
 	 * @param string $var The string to translate.
 	 */
-	public static function t($var)
+	public static function translate($var)
 	{
 		$arguments = func_get_args();
 		$arguments[0] = _($arguments[0]);
@@ -176,7 +176,7 @@ class Output {
 	public static function json($data)
 	{
 		self::preventTemplate();
-		self::h('Content-Type', 'application/json');
+		self::header('Content-Type', 'application/json');
 		
 		$value = json_encode($data);
 		if(Config::get('output.late', true)) {
