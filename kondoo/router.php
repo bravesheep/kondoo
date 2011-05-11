@@ -151,6 +151,10 @@ class Router {
      */
     public function route($url)
     {
+    	if($url[strlen($url) - 1] === '/') {
+    		$url = substr($url, 0, strlen($url) - 1);
+    	}
+    	
     	foreach($this->routes as $pattern => $target)
     	{
     		$regex = $this->createPatternRegex($pattern);
@@ -182,7 +186,7 @@ class Router {
      * @param string $action The action for which an url mapping is to be found
      * @param mixed $params Positions to be filled in, in an array. No array needed for single items
      */
-    public function reverse($controller, $action, $params)
+    public function reverse($controller, $action, $params = null)
     {
         $dest = implode('/', array($controller, $action));
         foreach($this->routes as $route => $target) {
@@ -190,8 +194,24 @@ class Router {
         	$controllerOk = $routeController === $controller || $routeController === ':controller';
         	$actionOk = $routeAction === $action || $routeAction === ':action';
         	if($controllerOk && $actionOk) {
+		    	if(!is_array($params) && !is_null($params)) {
+		    		$param = $params;
+		    		$params = self::singleToArray($param, $route);
+		    		if(count($params) === 0) {
+		    			$params = $param;
+		    			continue;
+		    		}
+		    	} else if(!is_array($params)) {
+		    		$params = array();
+		    	}
+		    	
+        		if(!self::canMatch($params, $route)) {
+        			continue;
+        		}
+		    	
         		$params['controller'] = $controller;
         		$params['action'] = $action;
+        		
         		foreach($params as $param => $value) {
         			$route = str_replace(array(":$param", ":\{$param\}"), $value, $route, $count);
         			
@@ -199,10 +219,43 @@ class Router {
         				continue 2;
         			}
         		}
+        		
+        		unset($params['controller']);
+        		unset($params['action']);
+        		
         		return $route;
         	}
         }
         return false;
+    }
+    
+    private static function singleToArray($param, $route)
+    {
+    	$params = array();
+    	$matches = array();
+    	if(preg_match_all('#:([a-z_]+)#i', $route, $matches) > 0) {
+    		$matches = array_filter($matches[1], function($item) {
+    			return $item !== 'action' && $item !== 'controller';
+    		});
+    		if(count($matches) === 1) {
+    			list($match) = $matches;
+    			$params[$match] = $param; 
+    		}
+    	}
+    	return $params;
+    }
+    
+    private static function canMatch($params, $route) 
+    {
+    	$matches = array();
+    	if(preg_match_all('#:([a-z_]+)#i', $route, $matches) > 0) {
+    		foreach($matches[1] as $match) {
+    			if(!isset($params[$match])) {
+    				return false;
+    			}
+    		}
+    	}
+    	return true;
     }
 }
 

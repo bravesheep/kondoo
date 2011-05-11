@@ -164,7 +164,11 @@ abstract class Application {
 				$callParams = $params;
 			}
 		} else if(is_string($controller)) {
-			$callAction = $controller;
+			if(strpos($controller, '/') !== false) {
+				list($callController, $callAction) = explode('/', $controller, 2);
+			} else {
+				$callAction = $controller;
+			}
 			if(is_array($action)) {
 				$callParams = $action;
 			}

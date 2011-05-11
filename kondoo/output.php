@@ -4,6 +4,7 @@ namespace Kondoo;
 
 use \Exception;
 use Kondoo\Output\Wrapper;
+use Kondoo\Output\Template;
 
 class Output {
 	
@@ -86,27 +87,12 @@ class Output {
 	 */
 	public static function template($template)
 	{
-		$template = strtolower($template);
-		$templateDir = self::getTemplateDir();
-		$templateFile = $templateDir . $template . self::TEMPLATE_EXT;
+		$templateFile = Template::templateToPath($template);
 		if(file_exists($templateFile) && is_readable($templateFile)) {
 			self::$template = $templateFile;
 		} else {
 			throw new Exception("Template '$template' does not exist or cannot be read");
 		}
-	}
-	
-	/**
-	 * Return the absolute path to the directory where templates are stored.
-	 */
-	public static function getTemplateDir()
-	{
-		$templateDir = Config::get('app.templates');
-		if($templateDir[0] === '.') {
-			$appLoc = Config::get('app.location');
-			$templateDir = realpath($appLoc . $templateDir) . DIRECTORY_SEPARATOR;
-		}
-		return $templateDir;
 	}
 	
 	/**
@@ -131,16 +117,9 @@ class Output {
 				self::template($request->getController() . DIRECTORY_SEPARATOR . 
 					$request->getAction());
 			}
-			unset($data);
-			unset($request);
 			
-			$_error_reporting = error_reporting();
-			error_reporting(($_error_reporting & E_NOTICE) ^ E_NOTICE);
-			
-			extract(self::$data, EXTR_OVERWRITE);
-			require self::$template;
-			
-			error_reporting($_error_reporting);
+			$templ = new Template(self::$template, self::$data);
+			$templ->render();
 		}
 	}
 	
@@ -151,7 +130,7 @@ class Output {
 	 */
 	public static function set($variable, $value)
 	{
-		self::$data[$variable] = new Wrapper($value);
+		self::$data[$variable] = $value;
 	}
 	
 	/**
@@ -163,7 +142,7 @@ class Output {
 	public static function get($variable, $default = null)
 	{
 		if(isset(self::$data[$variable])) {
-			return self::$data[$variable]->raw();
+			return self::$data[$variable];
 		}
 		return $default;
 	}
