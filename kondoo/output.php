@@ -137,9 +137,9 @@ class Output {
 			$_error_reporting = error_reporting();
 			error_reporting(($_error_reporting & E_NOTICE) ^ E_NOTICE);
 			
-			// TODO: what array to extract?
 			extract(self::$data, EXTR_OVERWRITE);
 			require self::$template;
+			
 			error_reporting($_error_reporting);
 		}
 	}
