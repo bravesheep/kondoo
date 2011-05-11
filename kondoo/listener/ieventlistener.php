@@ -1,10 +1,10 @@
 <?php
 
-namespace Kondoo\Filter;
+namespace Kondoo\Listener;
 /**
  * IFilter that defines its own events to be registered.
  */
-interface IEventFilter extends IFilter {
+interface IEventListener extends IListener {
 	/**
 	 * Returns either a string or array of strings indicating which events this filter wants to
 	 * register itself at. 

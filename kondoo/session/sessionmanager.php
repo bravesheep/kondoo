@@ -2,10 +2,10 @@
 
 namespace Kondoo\Session;
 
-use Kondoo\Filter\IEventFilter;
+use Kondoo\Listener\IEventListener;
 use Kondoo\Application;
 
-class SessionManager implements IEventFilter {
+class SessionManager implements IEventListener {
 	public function getEvents() 
 	{
 		return 'dispatch';

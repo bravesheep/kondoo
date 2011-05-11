@@ -5,6 +5,7 @@ namespace Kondoo;
 use \Exception;
 use Kondoo\Output\Wrapper;
 use Kondoo\Output\Template;
+use Kondoo\Listener\Event;
 
 class Output {
 	
@@ -105,7 +106,7 @@ class Output {
 			'headers' => self::$headers,
 			'content' => self::$output
 		);
-		Application::get()->trigger('output', $_data);
+		Event::trigger('output', $_data);
 		foreach($data['headers'] as $header) {
 			header($header);
 		}

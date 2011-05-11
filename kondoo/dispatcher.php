@@ -6,6 +6,7 @@ use \Exception;
 use \ReflectionClass;
 use \ReflectionMethod;
 use Kondoo\Controller\IController;
+use Kondoo\Listener\Event;
 
 class Dispatcher {
 	const CONTROLLER_POSTFIX = 'Controller';
@@ -45,18 +46,26 @@ class Dispatcher {
 		}
 	}
 	
+	/**
+	 * Dispatch the 
+	 * Enter description here ...
+	 * @param ReflectionMethod $method
+	 * @param IController $controller
+	 * @param array $params
+	 * @throws Exception
+	 */
 	private static function dispatchAction(ReflectionMethod $method, IController $controller, 
 			array $params)
 	{
 		if($method->isPublic()) {	
-			Application::get()->trigger('before_action');
+			Event::trigger('before_action');
 			$controller->__beforeAction();
 			
-			Application::get()->trigger('call_action');
+			Event::trigger('call_action');
 			$method->invokeArgs($controller, self::matchParams($method, $params));
 			
 			$controller->__afterAction();
-			Application::get()->trigger('after_action', $controller);
+			Event::trigger('after_action', $controller);
 		} else {
 			throw new Exception("Method for action found, but is not public.");
 		}

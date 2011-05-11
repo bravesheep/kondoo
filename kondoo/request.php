@@ -3,6 +3,7 @@
 namespace Kondoo;
 
 use Kondoo\Request\File;
+use Kondoo\Listener\Event;
 
 class Request {
 	/**
@@ -38,10 +39,10 @@ class Request {
 		$this->application = $app;
 		
 		list($url) = explode('?', $_SERVER['REQUEST_URI']);
-		$app->trigger('route', $url);
+		Event::trigger('route', $url);
 		
 		$routed = $app->router->route($url);
-		$app->trigger('routed', $routed);
+		Event::trigger('routed', $routed);
 		
 		$this->controllerName = $routed['controller'];
 		$this->actionName = $routed['action'];

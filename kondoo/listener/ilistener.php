@@ -1,13 +1,13 @@
 <?php
 
-namespace Kondoo\Filter;
+namespace Kondoo\Listener;
 
 use Kondoo\Application;
 
 /**
  * Objects that want to be used for events throughout the framework should implement this interface.
  */
-interface IFilter {
+interface IListener {
 	/**
 	 * Execute the filter given the application and extra data given via the second parameter. The
 	 * return value for this method depends on the event that was the cause of calling this event.

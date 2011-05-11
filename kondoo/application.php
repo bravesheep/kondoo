@@ -92,66 +92,6 @@ abstract class Application {
 		$this->router->addRoutes($routes);
 	}
 	
-	private $listeners = array();
-	
-	/**
-	 * Adds a listener to the given event identifier. A listerner can be 
-	 * any callable or an implementation of the IFilter interface.
-	 * @see Kondoo\Filter\IFilter
-	 * @param mixed $event
-	 * @param mixed $filter
-	 * @return boolean
-	 */
-	public function bind($event, $filter = null) 
-	{
-		if($event instanceof IEventFilter) {
-			$filter = $event;
-			$event = $filter->getEvents();
-		}
-		
-		if(is_callable($filter) || $filter instanceof IFilter) {
-			if(is_array($event)) {
-				foreach($event as $loc) {
-					if(!isset($this->listeners[$loc])) {
-						$this->listeners[$loc] = array();
-					}
-					$this->listeners[$loc][] = $filter;
-				}
-			} else {
-				if(!isset($this->listeners[$event])) {
-					$this->listeners[$event] = array();
-				}
-				$this->listeners[$event][] = $filter;
-			}
-			return true;
-		}
-		return false;
-	}
-	
-	/**
-	 * Triggers all listeners that are waiting for events on the given location.
-	 * @param string $event The event to trigger
-	 * @param mixed $data Extra data to be submitted to the listeners
-	 * @return boolean
-	 */
-	public function trigger($event, &$data = null)
-	{
-		$listeners = isset($this->listeners[$event]) ? $this->listeners[$event] : array();
-		$result = true;
-		foreach($listeners as $listener) {
-			if(is_callable($listener)) {
-				if(call_user_func_array($listener, array(&$data)) === false) {
-					$result = false;
-				}
-			} else if($listener instanceof IFilter) {
-				if($listener->call($this, $data) === false) {
-					$result = false;
-				}
-			}
-		}
-		return $result;
-	}
-	
 	public function redirect($controller, $action = null, $params = null)
 	{
 		$callController = $this->request->getController();
