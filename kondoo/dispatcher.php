@@ -39,10 +39,10 @@ class Dispatcher {
 				$method = $reflector->getMethod($request->getAction());
 				self::dispatchAction($method, $object, $request->params());
 			} else {
-				throw new Exception("Controller found, but doesn't implement IController");
+				throw new Exception("Controller '$controller' doesn't implement IController");
 			}
 		} else {
-			throw new Exception("Controller not found");
+			throw new Exception("Controller '$controller' not found");
 		}
 	}
 	
@@ -67,7 +67,7 @@ class Dispatcher {
 			$controller->__afterAction();
 			Event::trigger('after_action', $controller);
 		} else {
-			throw new Exception("Method for action found, but is not public.");
+			throw new Exception("Method for action '{$method->getName()}' is not public.");
 		}
 	}
 	

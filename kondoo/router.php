@@ -2,6 +2,8 @@
 
 namespace Kondoo;
 
+use \Exception;
+
 /**
  * The router class uses routing information to transform a given url to a controller/action pair,
  * including parameters if any were found.
@@ -151,7 +153,7 @@ class Router {
      */
     public function route($url)
     {
-    	if($url[strlen($url) - 1] === '/') {
+    	if(strlen($url) > 1 && $url[strlen($url) - 1] === '/') {
     		$url = substr($url, 0, strlen($url) - 1);
     	}
     	
@@ -177,7 +179,7 @@ class Router {
     			);
     		}
     	}
-    	return false;
+    	throw new Exception("No route for '$url'");
     }
     
     /**
