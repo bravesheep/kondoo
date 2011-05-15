@@ -23,13 +23,18 @@ class Dispatcher {
 		$controller = $request->getController();
 		$directory = Config::get('app.controllers');
 		if($directory[0] === '.') {
-			$directory = realpath(Config::get('app.location') . $directory) . DIRECTORY_SEPARATOR;
+			$directory = realpath(Config::get('app.location') . DIRECTORY_SEPARATOR . 
+					$directory) . DIRECTORY_SEPARATOR;
 		}
 		
 		$controller .= self::CONTROLLER_POSTFIX;
 		$file = $directory . $controller . '.php';
 		
-		if(file_exists($file) && is_readable($file)) {
+		if(!file_exists($file)) {
+			throw new Exception("Controller '$controller' not found");
+		} else if(!is_readable($file)) {
+			throw new Exception("File containing '$controller' not accessible");
+		} else {
 			require_once $file;
 			$reflector = new ReflectionClass($controller);
 			if($reflector->implementsInterface('Kondoo\\Controller\\IController')) {
@@ -41,8 +46,6 @@ class Dispatcher {
 			} else {
 				throw new Exception("Controller '$controller' doesn't implement IController");
 			}
-		} else {
-			throw new Exception("Controller '$controller' not found");
 		}
 	}
 	

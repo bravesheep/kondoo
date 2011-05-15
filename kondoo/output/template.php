@@ -4,6 +4,7 @@ namespace Kondoo\Output;
 
 use Kondoo\Config;
 use Kondoo\Application;
+use Kondoo\Output;
 
 class Template {
 	const TEMPLATE_EXT = '.php';
@@ -12,6 +13,11 @@ class Template {
 	private $template;
 	private $previousErrorReporting = null;
 	
+	/**
+	 * Create a new Template and assign the given data to be used.
+	 * @param string $template
+	 * @param array $data
+	 */
 	public function __construct($template, array $data = array())
 	{
 		foreach($data as $name => $item) {
@@ -24,6 +30,9 @@ class Template {
 		$this->template = $template;
 	}
 	
+	/**
+	 * Ready the template and output its result.
+	 */
 	public function render()
 	{
 		$this->previousErrorReporting = error_reporting();
@@ -36,49 +45,28 @@ class Template {
 		$this->previousErrorReporting = null;
 	}
 	
-	private function url($action, $params = null)
+	public function __call($name, array $params = array()) 
 	{
-		$request = Application::get()->request;
-		if(strpos($action, '/') === false) {
-			$controller = strtolower($request->getController());
-		} else {
-			list($controller, $action) = explode('/', $action, 2);
-		}
-		$router = Application::get()->router;
-		$reverse = $router->reverse($controller, $action, $params);
-		if($reverse === false) {
-			return '#';
-		} else {
-			return Config::get('app.prefix') . $reverse;
-		}
+		return Output::call($this, $name, $params);
 	}
 	
-	private function config($id)
+	public function getData()
 	{
-		return new Wrapper(Config::get($id));
+		return $this->data;
 	}
 	
-	private function using($template, $params = null)
-	{
-		$templateFile = self::templateToPath($template);
-		if(file_exists($templateFile) && is_readable($templateFile)) {
-			if(is_array($params)) {
-				$templ = new Template($templateFile, $params);
-			} else {
-				$templ = new Template($templateFile, $this->data);
-			}
-			return $templ->render();
-		} else {
-			throw new Exception("Could not use template '$template', file not found or unreadable");
-		}
-	}
-	
+	/**
+	 * Convert the name of a template to an absolute path of a template
+	 * @param string $template Name of a template
+	 * @return The absolute path to a template
+	 */
 	public static function templateToPath($template) 
 	{
 		$templateDir = Config::get('app.templates');
 		if($templateDir[0] === '.') {
 			$appLoc = Config::get('app.location');
-			$templateDir = realpath($appLoc . $templateDir) . DIRECTORY_SEPARATOR;
+			$templateDir = realpath($appLoc . DIRECTORY_SEPARATOR . 
+					$templateDir) . DIRECTORY_SEPARATOR;
 		}
 		return $templateDir . strtolower($template) . self::TEMPLATE_EXT;
 	}

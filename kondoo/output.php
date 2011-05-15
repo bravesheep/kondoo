@@ -6,6 +6,7 @@ use \Exception;
 use Kondoo\Output\Wrapper;
 use Kondoo\Output\Template;
 use Kondoo\Listener\Event;
+use Kondoo\Output\Functions;
 
 class Output {
 	
@@ -20,6 +21,8 @@ class Output {
 	private static $output = "";
 	
 	private static $data = array();
+	
+	private static $functions = array();
 	
 	/**
 	 * Output an header directly, or if late printing is enabled, send it after the output function
@@ -88,6 +91,7 @@ class Output {
 	 */
 	public static function template($template)
 	{
+		$template = strtolower($template);
 		$templateFile = Template::templateToPath($template);
 		if(file_exists($templateFile) && is_readable($templateFile)) {
 			self::$template = $templateFile;
@@ -184,5 +188,71 @@ class Output {
 		} else {
 			print $value;
 		}
+	}
+	
+	/**
+	 * Register a function to be used in templates. If the first argument is an IFunction
+	 * object then the name will be extracted from the name of the class. Otherwise name has to be
+	 * a string and func has to be a callable or a class implementing IFunction
+	 * @param mixed $name
+	 * @param mixed $func
+	 * @throws Exception
+	 */
+	public static function register($name, $func = null) 
+	{
+		if($name instanceof Functions\IFunction) {
+			$func = $name;
+			$name = strtolower(get_class($func));
+			if(substr($name, strlen($name) - strlen('function')) === 'function') {
+				$name = substr($name, 0, strlen($name) - strlen('function'));
+			}
+			$splitPos = strrpos($name, '\\');
+			if($splitPos !== false) {
+				$name = substr($name, $splitPos + 1);
+			}
+		} else {
+			$name = strtolower($name);
+		}
+		
+		if($func instanceof Functions\IFunction || is_callable($func)) {
+			self::$functions[$name] = $func;
+		} else {
+			throw new Exception('No callable or TemplateFunction given');
+		}
+	}
+	
+	/**
+	 * Register some default functions that should be usable in any template.
+	 */
+	public static function registerDefaults()
+	{
+		self::register(new Functions\UrlFunction());
+		self::register(new Functions\ConfigFunction());
+		self::register(new Functions\UsingFunction());
+	}
+	
+	/**
+	 * Call a template function and return its ouput. Will return an empty
+	 * string if the function could not be called.
+	 * @param string $name
+	 * @param array $args
+	 * @return mixed
+	 */
+	public static function call(Template $template, $name, array $args)
+	{
+		$funcs = self::$functions;
+		if(isset(self::$functions[$name])) {
+			$function = self::$functions[$name];
+			if($function instanceof Functions\IFunction) {
+				if($function->printRaw()) {
+					return $function->call($template, $args);
+				} else {
+					return new Wrapper($function->call($template, $args));
+				}
+			} else if(is_callable($function)) {
+				return new Wrapper(call_user_func_array($function, $args));
+			}
+		}
+		return "";
 	}
 }

@@ -42,18 +42,22 @@ abstract class Application {
 	public static function run() {
 		$script = $_SERVER['SCRIPT_FILENAME'];
 		Config::set('app.location', dirname(dirname($script)) . DIRECTORY_SEPARATOR .
-					'application' . DIRECTORY_SEPARATOR);
-		Config::set('app.public', dirname($script) . DIRECTORY_SEPARATOR);
+					'application');
+		Config::set('app.public', dirname($script));
 		
 		Config::set('app.controllers', './controllers/');
 		Config::set('app.templates', './templates/');
 		Config::set('output.late', true);
+		Output::registerDefaults();
 		
 		$app = new static();
 		self::$application = $app;
 		
 		$app->router = new Router();
 		$app->setup();
+		
+		date_default_timezone_set(Config::get('app.timezone', 'UTC'));
+		
 		$app->request = new Request($app);
 		
 		$maxRedirects = (int) Config::get('app.max_redirects', 5);
