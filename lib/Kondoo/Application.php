@@ -86,7 +86,7 @@ abstract class Application {
 	 */
 	public static function toResourceName($name)
 	{
-	    return strtoupper($name[0]) . substr($name, 1);
+	    return strtolower($name);
 	}
 	
 	/**
