@@ -1,3 +1,0 @@
-[submodule "deps/doctrine2-orm"]
-	path = deps/doctrine2-orm
-	url = git://github.com/doctrine/doctrine2.git
