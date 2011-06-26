@@ -69,14 +69,14 @@ abstract class Application {
 					'application');
 		Options::set('app.public', dirname($script));
 		
-		Options::set('app.dir.controllers', './controllers');
-		Options::set('app.dir.templates', './templates');
+		Options::set('app.dir.controllers', './modules/%MODULE%/controllers');
+		Options::set('app.dir.templates', './modules/%MODULE%/templates/%CONTROLLER%/%ACTION%');
 		Options::set('app.dir.locales', './locale');
 		Options::set('app.dir.models', './models');
 		Options::set('output.late', true);
 		
-		Options::set('app.resources.dispatcher', "Kondoo\\Dispatcher");
-		Options::set('app.resources.router', "Kondoo\\Router");
+		Options::set('app.resources.dispatcher', "\\Kondoo\\Dispatcher");
+		Options::set('app.resources.router', "\\Kondoo\\Router");
 	}
 	
 	/**
@@ -305,7 +305,7 @@ abstract class Application {
 		}
 		
 		$this->request  = new Request($this);
-		$this->response = new Response(); 
+		$this->response = new Response($this); 
 		
 		$this->dispatcher->dispatch($this);
 		

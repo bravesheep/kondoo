@@ -5,6 +5,7 @@ namespace Kondoo\Response;
 use \Kondoo\Options;
 use \Kondoo\Application;
 use \Kondoo\Response\Template\Wrapper;
+use \Kondoo\Request;
 
 class Template {
 	const TEMPLATE_EXT = '.php';
@@ -60,14 +61,38 @@ class Template {
 	 * @param string $template Name of a template
 	 * @return The absolute path to a template
 	 */
-	public static function templateToPath($template) 
+	public static function templateToPath($template = "", Request $request) 
 	{
 		$templateDir = Options::get('app.dir.templates');
-		if($templateDir[0] === '.') {
-			$appLoc = Options::get('app.location');
-			$templateDir = realpath($appLoc . DIRECTORY_SEPARATOR . 
-					$templateDir) . DIRECTORY_SEPARATOR;
+		$needles = array(
+		    '%MODULE%' => strtolower($request->getModule()),
+		    '%CONTROLLER%' => strtolower($request->getController()),
+		    '%ACTION%' => strtolower($request->getAction())
+		);
+		
+		$parts = explode('/', $template);
+		if(count($parts) === 3) {
+		    $needles['%MODULE%'] = strtolower($parts[0]);
+    		$needles['%CONTROLLER%'] = strtolower($parts[1]);
+    		$needles['%ACTION%'] = strtolower($parts[2]);
+		} else if(count($parts) === 2) {
+		    $needles['%CONTROLLER%'] = strtolower($parts[0]);
+    		$needles['%ACTION%'] = strtolower($parts[1]);
+		} else if(count($parts) === 1 && strlen($parts[0]) > 0) {
+    		$needles['%ACTION%'] = strtolower($parts[0]);
 		}
-		return $templateDir . strtolower($template) . self::TEMPLATE_EXT;
+		
+		
+		$template = str_replace(array_keys($needles), $needles, $templateDir) . self::TEMPLATE_EXT;
+		if(strlen($template) > 0 && $template[0] === '.') {
+			$appLoc = Options::get('app.location');
+			$realTemplate = realpath($appLoc . DIRECTORY_SEPARATOR . $template);
+			if($realTemplate === false) {
+			    $template = $appLoc . substr($template, 1);
+			} else {
+			    $template = $realTemplate;
+			}
+		}
+		return $template;
 	}
 }

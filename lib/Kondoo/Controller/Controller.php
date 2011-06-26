@@ -2,54 +2,37 @@
 
 namespace Kondoo\Controller;
 
-use Kondoo\Request;
 use Kondoo\Application;
-use Kondoo\Output;
+use Kondoo\Request;
 
-class Controller implements IController {
+/**
+ * The interface controllers should implement. Controllers are given the current application object,
+ * after which the {@link before()} method is called. After calling the {@link before()} method,
+ * the requested action is called. Finally, the {@link after()} method is called to finish action
+ * calling.
+ */
+interface Controller {	
+	/**
+	 * Called just before the action is executed, note that any return value of this function is
+	 * ignored.
+	 * @return void
+	 */
+	public function before();
 	
 	/**
-     * The request that resulted in calling this controller
-     * @var \Kondoo\Request
+	 * Called after the action is executed, the output given as a parameter so that it may be
+	 * changed.
+	 * @return void
 	 */
-	protected $request;
+	public function after();
+	
+	public function init();
 	
 	/**
-	 * The response for output.
-	 * @var \Kondoo\Response
+	 * Is called automatically to add the current application to the controller, so that it may
+	 * be used in actions.
+	 * @param \Kondoo\Application $app
+	 * @return void
 	 */
-	protected $response;
-	
-	/**
-	 * The application that called this controller
-	 * @var \Kondoo\Application
-	 */
-	protected $app;
-	
-	public function __beforeAction()
-	{
-		// default implementation does nothing
-	}
-	
-	public function __afterAction()
-	{
-		// default implementation does nothing
-	}
-	
-	public function setApplication(Application $app)
-	{
-		$this->app      = $app;
-		$this->request  = $this->app->request;
-		$this->response = $this->app->response;
-	}
-	
-	public function __get($variable)
-	{
-		return $this->response->get($variable);
-	}
-	
-	public function __set($variable, $value)
-	{
-		$this->response->set($variable, $value);
-	}
+	public function app(Application $app = null);
 }

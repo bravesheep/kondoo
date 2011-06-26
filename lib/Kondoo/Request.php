@@ -6,6 +6,12 @@ use Kondoo\Request\File;
 use Kondoo\Listener\Event;
 
 class Request {
+    /**
+     * Name of the called module
+     * @var string
+     */
+    private $moduleName;
+    
 	/**
 	 * Name of the called controller
      * @var string
@@ -44,6 +50,7 @@ class Request {
 		$routed = $app->router->route($url);
 		Event::trigger('routed', $routed);
 		
+		$this->moduleName = isset($routed['module']) ? $routed['module'] : null;
 		$this->controllerName = $routed['controller'];
 		$this->actionName = $routed['action'];
 		$this->parameters = $routed['params'];
@@ -159,7 +166,22 @@ class Request {
 	}
 	
 	/**
+	 * Return the requested module. If no module was given, the default module is returned.
+	 * @return string
+	 */
+	public function getModule()
+	{
+	    if(is_null($this->moduleName)) {
+	        $module = Options::get('app.default_module', 'default');
+	    } else {
+	        $module = $this->moduleName;
+	    }
+	    return strtolower($module);
+	}
+	
+	/**
 	 * Return the requested controller
+	 * @return string
 	 */
 	public function getController()
 	{
@@ -168,6 +190,7 @@ class Request {
 	
 	/**
 	 * Return the requested action
+	 * @return string
 	 */
 	public function getAction()
 	{

@@ -24,8 +24,11 @@ class Response {
 	
 	private $functions = array();
 	
-	public function __construct()
+	private $app;
+	
+	public function __construct(Application $app)
 	{
+	    $this->app = $app;
 	    $this->registerDefaults();
 	}
 	
@@ -97,7 +100,7 @@ class Response {
 	public function template($template)
 	{
 		$template = strtolower($template);
-		$templateFile = Template::templateToPath($template);
+		$templateFile = Template::templateToPath($template, $this->app->request);
 		if(file_exists($templateFile) && is_readable($templateFile)) {
 			$this->template = $templateFile;
 		} else {
@@ -124,8 +127,11 @@ class Response {
 		if($this->showTemplate) {
 			if(is_null($this->template)) {
 				$request = Application::get()->request;
-				$this->template($request->getController() . DIRECTORY_SEPARATOR . 
-					$request->getAction());
+				$this->template(sprintf('%s/%s/%s', 
+				    strtolower($request->getModule()), 
+				    strtolower($request->getController()), 
+				    strtolower($request->getAction())
+				));
 			}
 			
 			$templ = new Template($this->template, $this->data);

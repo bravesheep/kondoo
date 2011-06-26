@@ -5,87 +5,157 @@ namespace Kondoo;
 use \Exception;
 use \ReflectionClass;
 use \ReflectionMethod;
-use \Kondoo\Controller\IController;
+use \Kondoo\Controller\Controller;
 use \Kondoo\Listener\Event;
 use \Kondoo\Resource\Provider;
+use \Kondoo\Response\Redirect;
 
 class Dispatcher implements Provider {
 	const CONTROLLER_POSTFIX = 'Controller';
+	const ACTION_POSTFIX = "Action";
+	const PHP_EXT = ".php";
+	
+	private $redirect;
+	
+	private $app;
+	
+	public function __construct()
+	{
+	    $this->redirect = null;
+	}
 	
 	public function setOptions(array $options)
 	{
-	    
+	    // No options required.
 	}
 	
-	/**
-	 * Dispatches the request to the application to the accurate controller and action and calls
-	 * functions required.
-	 * @param Application $app
-	 * @param Request $request
-	 * @throws \Exception
-	 */
+	
+	private function updateRequest()
+	{
+	    $this->redirect->setRequest($this->app->request);
+	    $this->app->request->setModule($this->redirect->getModule());
+	    $this->app->request->setController($this->redirect->getController());
+	    $this->app->request->setAction($this->redirect->getAction());
+	    $this->app->request->setParams($this->redirect->getParams());
+	}
+	
+	private function getControllerDir()
+	{
+	    $directory = Options::get('app.dir.controllers');
+	    $directory = str_replace('%MODULE%', $this->app->request->getModule(), $directory);
+	    
+	    if(strlen($directory) === 0 || $directory[0] === '.') {
+	        $appLocation = Options::get('app.location');
+	        $directory = realpath($appLocation . DIRECTORY_SEPARATOR . $directory);
+	        if($directory === false) {
+	            throw new Exception(sprintf(
+	                _("Controller folder not found for module %s"), 
+	                $this->app->request->getModule()
+	            ));
+	        }
+	    }
+	    
+	    if(strlen($directory) > 1 && $directory[strlen($directory) - 1] !== DIRECTORY_SEPARATOR) {
+	        $directory .= DIRECTORY_SEPARATOR;
+	    }
+	    return $directory;
+	}
+	
+	private function loadController($controllerName)
+	{
+	    $directory = $this->getControllerDir();
+	    $file = $directory . $controllerName . self::PHP_EXT;
+	    if(!file_exists($file) || !is_readable($file)) {
+	        throw new Exception(sprintf(
+	            _("Controller %s not found, or not readable"), 
+	            $controllerName
+	        ));
+	    } else {
+	        require_once $file;
+	        if(!class_exists($controllerName)) {
+	            throw new Exception(sprintf(
+	                _("File for controller %s found, but no class with the same name"),
+	                $controllerName
+	            ));
+	        }
+	    }
+	}
+	
+	private function constructController($controller)
+	{
+	    $reflector = new ReflectionClass($controller);
+	    if($reflector->implementsInterface('\\Kondoo\\Controller\\Controller')) {
+	        $object = new $controller();
+	        $object->app($this->app);
+	        $object->init();
+	        Event::trigger('controller_init', $object);
+	        return $object;
+	    } else {
+	        throw new Exception(sprintf(
+			    _("Controller '%s' doesn't implement interface Controller"),
+			    $controller
+			));
+	    }
+	}
+	
 	public function dispatch(Application $app)
 	{
-		$controller = $app->request->getController();
-		$directory = Options::get('app.dir.controllers');
-		if($directory[0] === '.') {
-			$directory = realpath(Options::get('app.location') . DIRECTORY_SEPARATOR . 
-					$directory) . DIRECTORY_SEPARATOR;
-		}
-		
-		$controller .= self::CONTROLLER_POSTFIX;
-		$file = $directory . $controller . '.php';
-		
-		if(!file_exists($file)) {
-			throw new Exception("Controller '$controller' not found");
-		} else if(!is_readable($file)) {
-			throw new Exception("File containing '$controller' not accessible");
-		} else {
-			require_once $file;
-			$reflector = new ReflectionClass($controller);
-			if($reflector->implementsInterface('Kondoo\\Controller\\IController')) {
-				$object = new $controller();
-				$object->setApplication($app);
-				$method = $reflector->getMethod($app->request->getAction());
-				$this->dispatchAction($method, $object, $app->request->params());
-			} else {
-				throw new Exception("Controller '$controller' doesn't implement IController");
-			}
-		}
+	    $this->app = $app;
+	    $controllers = array();
+	    do {
+	        if(!is_null($this->redirect)) {
+	            $this->updateRequest();
+	            $this->redirect = null;
+	        }
+	        
+    		$controller = $app->request->getController() . self::CONTROLLER_POSTFIX;
+    		if(!class_exists($controller)) {
+    		    $this->loadController($controller);
+    		}
+    		
+    		if(!isset($controllers[$controller]) || 
+    		        !($controllers[$controller] instanceof $controller)) {
+    		    $controllers[$controller] = $this->constructController($controller);
+    		}
+    		
+    		$object = $controllers[$controller];
+    		$this->dispatchAction($object);
+	    } while(!is_null($this->redirect));
 	}
 	
-	/**
-	 * Dispatch the 
-	 * Enter description here ...
-	 * @param ReflectionMethod $method
-	 * @param IController $controller
-	 * @param array $params
-	 * @throws Exception
-	 */
-	private function dispatchAction(ReflectionMethod $method, IController $controller, 
-			array $params)
+	private function dispatchAction(Controller $controller)
 	{
-		if($method->isPublic()) {	
-			Event::trigger('before_action');
-			$controller->__beforeAction();
-			
-			Event::trigger('call_action');
-			$method->invokeArgs($controller, self::matchParams($method, $params));
-			
-			$controller->__afterAction();
-			Event::trigger('after_action', $controller);
-		} else {
-			throw new Exception("Method for action '{$method->getName()}' is not public.");
-		}
+	    $action = $this->app->request->getAction();
+	    $methodName = self::toActionMethod($action);
+	    $reflector = new ReflectionClass($controller);
+	    if(!$reflector->hasMethod($methodName)) {
+	        throw new Exception(sprintf(_("No method for action '%s'."), $action));
+	    }
+	    
+	    $method = $reflector->getMethod($methodName);
+	    if(!$method->isPublic()) {
+	        throw new Exception(sprintf(_("Method for action '%s' is not public."), $action));
+	    }
+	    
+	    Event::trigger('before_action', $controller);
+	    $controller->before();
+	    
+	    Event::trigger('call_action', $controller);
+	    $params = $this->app->request->params();
+	    $result = $method->invokeArgs($controller, self::matchParams($method, $params));
+	    if($result instanceof Redirect) {
+	        $this->redirect = $result;
+	    }
+	    
+	    $controller->after();
+	    Event::trigger('after_action', $controller);
 	}
 	
-	/**
-	 * Sort the parameters so that they fit onto the given method. Throws an exception if the
-	 * function can't be called.
-	 * @param \ReflectionMethod $method
-	 * @param array $params
-	 * @throws \Exception
-	 */
+	public static function toActionMethod($methodName)
+	{
+	    return $methodName . self::ACTION_POSTFIX;
+	}
+	
 	public static function matchParams(ReflectionMethod $method, array $params)
 	{
 		$values = array();

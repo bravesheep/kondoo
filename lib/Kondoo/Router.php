@@ -40,6 +40,7 @@ class Router implements ResourceProvider {
         'month'      => '(1[0-2])|(0?[1-9])',
         'day'        => '(0?[1-9])|([1-2][0-9])|(3[0-1])',
         'slug'       => '[\w-]+',
+        'module'     => '\w+',
         'controller' => '\w+',
         'action'     => '\w+'
     );
@@ -169,11 +170,20 @@ class Router implements ResourceProvider {
     	{
     		$regex = $this->createPatternRegex($pattern);
     		if(preg_match("#^$regex$#", $url, $matches) === 1) {
-    			list($controller, $action) = explode('/', $target);
+    		    $parts = explode('/', $target);
+    		    if(count($parts) === 3) {
+    		        list($module, $controller, $action) = $parts;
+    		    } else {
+    		        list($controller, $action) = $parts;
+    		        $module = null;
+    		    }
+    		    
     			$params = array();
     			foreach($matches as $key => $value) {
-    				if(is_string($key) && $key !== 'controller' && $key !== 'action') {
-    					$params[$key] = $value;
+    				if(!in_array($key, array('controller', 'action', 'module'))) {
+    					$params[(string) $key] = $value;
+    				} else if($key === 'module' && $module === ':module') {
+    				    $module = $value;
     				} else if($key === 'controller' && $controller === ':controller') {
     					$controller = $value;
     				} else if($key === 'action' && $action === ':action') {
@@ -181,6 +191,7 @@ class Router implements ResourceProvider {
     				}
     			}
     			return array(
+    			    'module' => $module,
     				'controller' => $controller,
     				'action' => $action,
     				'params' => $params
@@ -192,18 +203,31 @@ class Router implements ResourceProvider {
     
     /**
      * Given a set of parameters, reverse the routing to an url.
-     * @param string $controller The controller for which an url mapping is to be found
      * @param string $action The action for which an url mapping is to be found
      * @param mixed $params Positions to be filled in, in an array. No array needed for single items
      */
-    public function reverse($controller, $action, $params = null)
+    public function reverse($action, $params = null)
     {
-        $dest = implode('/', array($controller, $action));
+        $parts = explode('/', $action);
+	    if(count($parts) === 3) {
+	        list($module, $controller, $action) = $parts;
+	    } else {
+	        list($controller, $action) = $parts;
+	        $module = null;
+	    }
+	    
         foreach($this->routes as $route => $target) {
-        	list($routeController, $routeAction) = explode('/', $target);
+            $parts = explode('/', $target);
+		    if(count($parts) === 3) {
+		        list($routeModule, $routeController, $routeAction) = $parts;
+		    } else {
+		        list($routeController, $routeAction) = $parts;
+		        $routeModule = null;
+		    }
+		    $moduleOk = $module === $routeModule || $routeModule === ':module' && $module !== null;
         	$controllerOk = $routeController === $controller || $routeController === ':controller';
         	$actionOk = $routeAction === $action || $routeAction === ':action';
-        	if($controllerOk && $actionOk) {
+        	if($moduleOk && $controllerOk && $actionOk) {
 		    	if(!is_array($params) && !is_null($params)) {
 		    		$param = $params;
 		    		$params = self::singleToArray($param, $route);
@@ -218,18 +242,25 @@ class Router implements ResourceProvider {
         		if(!self::canMatch($params, $route)) {
         			continue;
         		}
-		    	
+        		
+		    	if($module !== null) {
+		    	    $params['module'] = $module;
+		    	}
         		$params['controller'] = $controller;
         		$params['action'] = $action;
         		
         		foreach($params as $param => $value) {
         			$route = str_replace(array(":$param", ":\{$param\}"), $value, $route, $count);
         			
-        			if($count !== 1 && $param !== 'action' && $param !== 'controller') {
+        			if($count !== 1 && $param !== 'action' && $param !== 'controller' 
+        			        && $param !== 'module') {
         				continue 2;
         			}
         		}
         		
+        		if(isset($params['module'])) {
+        		    unset($params['module']);
+        		}
         		unset($params['controller']);
         		unset($params['action']);
         		
@@ -245,7 +276,7 @@ class Router implements ResourceProvider {
     	$matches = array();
     	if(preg_match_all('#:([a-z_]+)#i', $route, $matches) > 0) {
     		$matches = array_filter($matches[1], function($item) {
-    			return $item !== 'action' && $item !== 'controller';
+    			return $item !== 'action' && $item !== 'controller' && $item !== 'module';
     		});
     		if(count($matches) === 1) {
     			list($match) = $matches;
