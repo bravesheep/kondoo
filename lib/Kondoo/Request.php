@@ -5,6 +5,9 @@ namespace Kondoo;
 use Kondoo\Request\File;
 use Kondoo\Listener\Event;
 
+/**
+ * This is the request class.
+ */
 class Request {
     /**
      * Name of the called module
