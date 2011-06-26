@@ -9,6 +9,7 @@ use \Kondoo\Controller\Controller;
 use \Kondoo\Listener\Event;
 use \Kondoo\Resource\Provider;
 use \Kondoo\Response\Redirect;
+use \Kondoo\Util\PathUtil;
 
 class Dispatcher implements Provider {
 	const CONTROLLER_POSTFIX = 'Controller';
@@ -43,22 +44,14 @@ class Dispatcher implements Provider {
 	{
 	    $directory = Options::get('app.dir.controllers');
 	    $directory = str_replace('%MODULE%', $this->app->request->getModule(), $directory);
-	    
-	    if(strlen($directory) === 0 || $directory[0] === '.') {
-	        $appLocation = Options::get('app.location');
-	        $directory = realpath($appLocation . DIRECTORY_SEPARATOR . $directory);
-	        if($directory === false) {
-	            throw new Exception(sprintf(
-	                _("Controller folder not found for module %s"), 
-	                $this->app->request->getModule()
-	            ));
-	        }
+	    $directory = realpath(PathUtil::expand($directory));
+	    if($directory === false) {
+	        throw new Exception(sprintf(
+	            _("Controller folder not found for module %s"), 
+	            $this->app->request->getModule()
+	        ));
 	    }
-	    
-	    if(strlen($directory) > 1 && $directory[strlen($directory) - 1] !== DIRECTORY_SEPARATOR) {
-	        $directory .= DIRECTORY_SEPARATOR;
-	    }
-	    return $directory;
+	    return $directory . DIRECTORY_SEPARATOR;
 	}
 	
 	private function loadController($controllerName)

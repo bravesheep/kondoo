@@ -6,6 +6,7 @@ use \Kondoo\Options;
 use \Kondoo\Application;
 use \Kondoo\Response\Template\Wrapper;
 use \Kondoo\Request;
+use \Kondoo\Util\PathUtil;
 
 class Template {
 	const TEMPLATE_EXT = '.php';
@@ -84,15 +85,6 @@ class Template {
 		
 		
 		$template = str_replace(array_keys($needles), $needles, $templateDir) . self::TEMPLATE_EXT;
-		if(strlen($template) > 0 && $template[0] === '.') {
-			$appLoc = Options::get('app.location');
-			$realTemplate = realpath($appLoc . DIRECTORY_SEPARATOR . $template);
-			if($realTemplate === false) {
-			    $template = $appLoc . substr($template, 1);
-			} else {
-			    $template = $realTemplate;
-			}
-		}
-		return $template;
+		return PathUtil::expand($template);
 	}
 }

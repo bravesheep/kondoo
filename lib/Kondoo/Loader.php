@@ -74,20 +74,34 @@ class Loader {
     
     private static function defaultLoad($className)
     {
+        if(class_exists($className)) {
+            return;
+        }
+        
         $defaultAppLoc = dirname(dirname($_SERVER['SCRIPT_FILENAME'])) . DIRECTORY_SEPARATOR . 
             'application';
         if(class_exists('\\Kondoo\\Options')) {
-            $appLocation = Options::get('app.location', $defaultAppLoc);
+            $appLocation = \Kondoo\Options::get('app.location', $defaultAppLoc);
         } else {
             $appLocation = $defaultAppLoc;
         }
+        
+        if(class_exists('\\Kondoo\\Util\\PathUtil') && class_exists('\\Kondoo\\Options')) {
+            $modelsLocation = \Kondoo\Util\PathUtil::expand(
+                \Kondoo\Options::get('app.dir.models', './models')
+            );
+        } else {
+            $modelsLocation = $appLocation . DIRECTORY_SEPARATOR . 'models';
+        }
+        
         
         $classPath = $className;
         if(DIRECTORY_SEPARATOR !== '\\') {
             $classPath = str_replace('\\', DIRECTORY_SEPARATOR, $classPath);
         }
         $classPath = str_replace('_', DIRECTORY_SEPARATOR, $classPath);
-        $paths = array_merge(array($appLocation), explode(PATH_SEPARATOR, get_include_path()));
+        $extraPaths = array($appLocation, $modelsLocation);
+        $paths = array_merge($extraPaths, explode(PATH_SEPARATOR, get_include_path()));
         foreach($paths as $path) {
             if($path[strlen($path) - 1] !== DIRECTORY_SEPARATOR) {
                 $path .= DIRECTORY_SEPARATOR;
